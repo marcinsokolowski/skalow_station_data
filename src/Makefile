@@ -1,4 +1,4 @@
-include ../make.cfg/flags.mak
+include flags.mak
 # include $(BIGHORNS)/software/analysis/make.cfg/flags.mak
 
 # pre-processor :
