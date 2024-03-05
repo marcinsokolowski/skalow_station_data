@@ -2,7 +2,7 @@
 # include $(BIGHORNS)/software/analysis/make.cfg/flags.mak
 
 # pre-processor :
-COMMON_LIBS=-L$(BIGHORNS)/lib -lfitslib -lmsfitslib  -lcfitsio -lnova 
+COMMON_LIBS=-L$(BIGHORNS)/lib -lmsfitslib  -lcfitsio -lnova 
 INCLUDES=-D_UNIX -I$(SRCDIR)/cmn/mathlib/ -I$(SRCDIR)/cmn/baselib/ -I$(BIGHORNS)/software/analysis/fitslib/
 
 all :
