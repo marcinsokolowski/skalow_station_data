@@ -16,10 +16,16 @@
 #include <myfile.h>
 #include <mystring.h>
 
+#include "SigprocFile.h" // to save .fil files too
+
 enum eBandPassCalMethod_T { eBWCal_donothing=0, eBWCal_divide=1, eBWCal_subtract=2 };
 enum eOutputType_T { eUnknown=0, eI=1, eQ=2, eU=3, eV=4, eIQUV=5, ePhaseXY=6, eXY=7 };
 eOutputType_T gOutPutType = eI;
 bool gShiftReIm=true; // for now always do XY phase 
+
+// saving filterbank files:
+bool gSaveFilterbankFiles=false;
+char gOutFilFile[2048];
 
 eOutputType_T parse_output_type( const char* szOutputType ){
    if( strcasecmp(szOutputType,"iquv") == 0 ){ 
@@ -61,7 +67,7 @@ int gFreqChannel = 410;
 int gVerb=0;
 int gDumpChannel=0;
 char filename[1024];
-char gOutFile[1024],gOutFileAvg[1024],gOutFileDat[1024],gOutFileTotPower[1024];
+char gOutFile[1024],gOutFileAvg[2048],gOutFileDat[2048],gOutFileTotPower[1024];
 mystring gOutDir;
 int gAddIndex=0;
 int gPol=1; // 0 - X , 1 - Y 
@@ -231,12 +237,13 @@ void usage()
    printf("\t-t OUTPUT_TYPE : iquv, i, q, u, v, or pxy - is Phase(xy*), xy* is correlation XY* etc\n");
    printf("\t-A OUTPUT_DIRECTORY : [default %s]\n",gOutDir.c_str());
    printf("\t-Y : add XY phase\n");
+   printf("\t-b : save filterbank files [default disabled]\n");
    
    exit(0);
 }
 
 void parse_cmdline(int argc, char * argv[]) {
-   char optstring[] = "vudc:C:f:i:r:m:p:s:n:a:M:ZS:X:I:O:F:N:P:T:B:D:o:t:A:Y";
+   char optstring[] = "vudc:C:f:i:r:m:p:s:n:a:M:ZS:X:I:O:F:N:P:T:B:D:o:t:A:Yb";
    int opt,opt_param,i;
    
 //   strcpy(filename,"");
@@ -249,6 +256,10 @@ void parse_cmdline(int argc, char * argv[]) {
                gOutDir = optarg;
             }
             break;
+         
+         case 'b':
+            gSaveFilterbankFiles = true;
+            break;   
             
          case 'c':
             if( optarg ){   
@@ -429,7 +440,9 @@ void parse_cmdline(int argc, char * argv[]) {
       printf("INFO : created output directory %s\n",gOutDir.c_str());
    }
 
-   sprintf(gOutFileAvg,"%s/%s_avg.txt",gOutDir.c_str(),gOutFile);
+   if( (strlen(gOutDir.c_str()) + strlen(gOutFile) + 8) < 1024 ){
+      sprintf(gOutFileAvg,"%s/%s_avg.txt",gOutDir.c_str(),gOutFile);
+   }
    sprintf(gOutFileDat,"%s/%s.dat",gOutDir.c_str(),gOutFile);
    sprintf(gOutFileTotPower,"%s/total_power_out.txt",gOutDir.c_str());
 
@@ -482,6 +495,7 @@ void printf_parameters()
   printf("Output type         = %d\n",gOutPutType);
   printf("Output folded FITS  = %s\n",gOutFoldedFits.c_str());
   printf("Output directory    = %s\n",gOutDir.c_str());
+  printf("Save filterbank     = %d\n",gSaveFilterbankFiles);
   printf("Max time to process = %.6f [sec]\n",gMaxTimeToProcessInSec);
   printf("Dump channeld idx  = %d\n",gDumpChannel);
   printf("Start Index        = %d (save to header file -s option)\n",gStartIndex);
@@ -630,7 +644,7 @@ int main(int argc,char* argv[])
       double* out_spectrum_i = new double[gOutFineChannels];      
       double* out_spectrum_x = new double[gOutFineChannels];      
       std::complex<float>* out_spectrum_reim_x = new std::complex<float>[gOutFineChannels];
-      std::vector<double> out_spectrum_x_shifted, out_spectrum_y_shifted, out_xy_phase, out_stokes_q, out_stokes_u, out_stokes_v;
+      std::vector<double> out_spectrum_x_shifted, out_spectrum_y_shifted, out_xy_phase, out_stokes_q, out_stokes_u, out_stokes_v, out_stokes_i;
 //      std::vector< std::complex<float> > out_stokes_u, out_stokes_v;
       std::vector< std::complex<float> > out_spectrum_reim_x_shifted, out_spectrum_reim_y_shifted;
       int out_count_x=0;
@@ -644,6 +658,7 @@ int main(int argc,char* argv[])
       out_stokes_q.assign(gOutFineChannels,0);
       out_stokes_u.assign(gOutFineChannels,0);
       out_stokes_v.assign(gOutFineChannels,0);
+      out_stokes_i.assign(gOutFineChannels,0);
       avg_spectrum2fits_x.assign(gOutFineChannels,0);
       avg_spectrum2fits_y.assign(gOutFineChannels,0);
       avg_spectrum2fits_i.assign(gOutFineChannels,0);
@@ -672,6 +687,8 @@ int main(int argc,char* argv[])
       CBgFits* pFoldedU = NULL;
       CBgFits* pFoldedV = NULL;
       CBgFits* pFoldedCounter = NULL;
+      SigprocFile* pOutFilterbankI = NULL;
+      float* filterbank_buffer=NULL;
       int out_fits_line_index=0;
       int nTimesteps = ((n_file_timesamples / gOutFineChannels)/gAvgNSpectraToFITS); // ignore partial 
       printf("INFO : calculated %d timesteps to be saved as averaged spectra\n",nTimesteps);
@@ -699,6 +716,29 @@ int main(int argc,char* argv[])
          pFoldedV->SetValue(0.00);
          pFoldedCounter = new CBgFits( gNFoldingBinsCount, gOutFineChannels );
          pFoldedCounter->SetValue(0.00);
+         
+         if( gSaveFilterbankFiles ){
+            double freq_higher_end = gFreqChannel*gChannel2FreqMultiplier + gFullBW/2.00;
+            double fine_channel = gFullBW/gOutFineChannels;
+            double foff = -fine_channel;
+            double tstart = uxtime_start;
+            double tsamp  = (gTimesampleInSec*gOutFineChannels*gAvgNSpectraToFITS); // in seconds
+            int nbits = 8*int(sizeof(float));
+            pOutFilterbankI = new SigprocFile( nbits, 1, gOutFineChannels, freq_higher_end, foff, tstart, tsamp );
+            printf("INFO : creating filterbank filewith the following parameters : freq_higher_end = %.6f MHz, fine_channel_bw = %.6f MHz, foff = %.6f MHz, tstart = %.6f ux, tsamp = %.6f sec\n",freq_higher_end,fine_channel,foff,tstart,tsamp);
+            filterbank_buffer = new float[gOutFineChannels];
+            
+            sprintf(gOutFilFile,"%s/%s_avg%d_i.fil",gOutDir.c_str(),gOutFITSBase.c_str(),gAvgNSpectraToFITS);
+            printf("DEBUG : writting header ...\n");
+            pOutFilterbankI->name( gOutFilFile );
+            pOutFilterbankI->sourcename("J0835-4510");
+            pOutFilterbankI->telescope_id(30);// MWA
+            pOutFilterbankI->src_raj(83520.61149);
+            pOutFilterbankI->src_dej(-451034.8751);
+            pOutFilterbankI->FillHeader( true, false );
+            int ret = pOutFilterbankI->WriteHeader( gOutFilFile , false, true );
+            printf("DEBUG : header written to fil file %s OK ( %d bytes written )\n",gOutFilFile,ret);
+         }         
          
          // init keywords :
          pOutFitsX->SetKeywordFloat( "RA_deg", gRA_deg );
@@ -837,6 +877,7 @@ int main(int argc,char* argv[])
                        out_stokes_u[fch] = 0.5*(xy + yx).real(); // u = (xy+yx)/2 // was std::complex<float>(0.5,0.00)*(xy + yx)
                        out_stokes_v[fch] = 0.5*(xy - yx).imag(); // V = (xy-yx)/2i // was std::complex<float>(0.5,0.00)*(xy - yx)
                        out_stokes_q[fch] = xx.real() - yy.real();
+                       out_stokes_i[fch] = xx.real() + yy.real();
                     }
                  }
                  
@@ -936,6 +977,16 @@ int main(int argc,char* argv[])
                           // pOutFitsV->set_line( out_fits_line_index , avg_spectrum2fits_v );
                        }
                        
+                       // write to filterbank (if required)
+                       if( pOutFilterbankI && filterbank_buffer ){
+                          for(int ch=0;ch<avg_spectrum2fits_i.size();ch++){                           
+                             filterbank_buffer[ch] = avg_spectrum2fits_i[ch];
+                          }
+                          pOutFilterbankI->WriteData( filterbank_buffer , avg_spectrum2fits_i.size() ); 
+                          // printf("DEBUG : wrote %d channels to filterbank file\n",avg_spectrum2fits_i.size() );
+                       }
+                       
+                       
                        if( (out_fits_line_index % 1000)==0 || nTimesteps < 1000 ){
                           printf("PROGRESS : averaged spectrum %d / %d\n",out_fits_line_index,nTimesteps);
                        }
@@ -998,7 +1049,7 @@ int main(int argc,char* argv[])
         }
         
         if( gVerb > 0 ){
-           printf("read line = %d, all zero count = %d out of %d channels\n",line,all_zeros_count);
+           printf("read line = %d, all zero count = %d\n",line,all_zeros_count);
         }
         line++;
       }      
@@ -1168,6 +1219,12 @@ int main(int argc,char* argv[])
          delete pFoldedU;
          delete pFoldedV;
          delete pFoldedCounter;
+         
+         if(pOutFilterbankI){
+            pOutFilterbankI->Close();
+            printf("INFO : output filterbank file closed\n");
+            delete pOutFilterbankI;
+         }         
       }
       
       if( in_x ){
@@ -1190,6 +1247,9 @@ int main(int argc,char* argv[])
       }
       if( out_spectrum_reim_y ){
          delete [] out_spectrum_reim_y;
+      }
+      if( filterbank_buffer ){
+         delete [] filterbank_buffer;
       }
   }else{
      printf("ERROR : could not open file %s\n",filename);

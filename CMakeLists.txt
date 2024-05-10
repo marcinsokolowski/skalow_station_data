@@ -32,7 +32,7 @@ find_library(MSFITSLIB_LIB msfitslib PATHS ENV LD_LIBRARY_PATH)
 # required to properly link the dynamic library :
 # target_link_libraries(skalow_station_data ${CFITSIO_LIB} ${LIBNOVA_LIB} ${ROOT_LIBRARIES} ${FFTW3_LIB} -ldl -lpthread)
 
-add_executable(skalow_spectrometer apps/skalow_spectrometer.cpp)
+add_executable(skalow_spectrometer apps/skalow_spectrometer.cpp src/SigprocFile.cpp src/DataSource.cpp src/InvalidSourceFormat.cpp src/CpuTimer.cpp)
 target_link_libraries(skalow_spectrometer ${MSFITSLIB_LIB} ${LIBNOVA_LIB} ${ROOT_LIBRARIES} ${FFTW3_LIB} -ldl -lpthread)
 
 
