@@ -24,7 +24,8 @@ eOutputType_T gOutPutType = eI;
 bool gShiftReIm=true; // for now always do XY phase 
 
 // saving filterbank files:
-bool gSaveFilterbankFiles=false;
+int gSaveFilterbankFilesSign=0;
+bool gSaveFilterbankFilesReversed=false;
 char gOutFilFile[2048];
 
 eOutputType_T parse_output_type( const char* szOutputType ){
@@ -237,13 +238,14 @@ void usage()
    printf("\t-t OUTPUT_TYPE : iquv, i, q, u, v, or pxy - is Phase(xy*), xy* is correlation XY* etc\n");
    printf("\t-A OUTPUT_DIRECTORY : [default %s]\n",gOutDir.c_str());
    printf("\t-Y : add XY phase\n");
-   printf("\t-b : save filterbank files [default disabled]\n");
+   printf("\t-b FOFFSET_SIGN : save filterbank files, set sign of the offset [default %d]\n",gSaveFilterbankFilesSign);
+   printf("\t-R : reversed channel order [default %d]\n",gSaveFilterbankFilesReversed);
    
    exit(0);
 }
 
 void parse_cmdline(int argc, char * argv[]) {
-   char optstring[] = "vudc:C:f:i:r:m:p:s:n:a:M:ZS:X:I:O:F:N:P:T:B:D:o:t:A:Yb";
+   char optstring[] = "vudc:C:f:i:r:m:p:s:n:a:M:ZS:X:I:O:F:N:P:T:B:D:o:t:A:Yb:R";
    int opt,opt_param,i;
    
 //   strcpy(filename,"");
@@ -258,9 +260,16 @@ void parse_cmdline(int argc, char * argv[]) {
             break;
          
          case 'b':
-            gSaveFilterbankFiles = true;
+            if( optarg ){
+               gSaveFilterbankFilesSign = atol(optarg);
+            }
             break;   
             
+         case 'R':
+            gSaveFilterbankFilesReversed = true;
+            break;   
+            
+
          case 'c':
             if( optarg ){   
                if( atol(optarg)>=0 && atol(optarg)<=512 ){
@@ -495,7 +504,8 @@ void printf_parameters()
   printf("Output type         = %d\n",gOutPutType);
   printf("Output folded FITS  = %s\n",gOutFoldedFits.c_str());
   printf("Output directory    = %s\n",gOutDir.c_str());
-  printf("Save filterbank     = %d\n",gSaveFilterbankFiles);
+  printf("Save filterbank sign  = %d\n",gSaveFilterbankFilesSign);
+  printf("Filterbank channels reversed = %d\n",gSaveFilterbankFilesReversed);
   printf("Max time to process = %.6f [sec]\n",gMaxTimeToProcessInSec);
   printf("Dump channeld idx  = %d\n",gDumpChannel);
   printf("Start Index        = %d (save to header file -s option)\n",gStartIndex);
@@ -717,10 +727,10 @@ int main(int argc,char* argv[])
          pFoldedCounter = new CBgFits( gNFoldingBinsCount, gOutFineChannels );
          pFoldedCounter->SetValue(0.00);
          
-         if( gSaveFilterbankFiles ){
+         if( gSaveFilterbankFilesSign != 0 ){
             double freq_higher_end = gFreqChannel*gChannel2FreqMultiplier + gFullBW/2.00;
             double fine_channel = gFullBW/gOutFineChannels;
-            double foff = -fine_channel;
+            double foff = gSaveFilterbankFilesSign*fine_channel; // plus , minus not ok
             double tstart = uxtime_start;
             double tsamp  = (gTimesampleInSec*gOutFineChannels*gAvgNSpectraToFITS); // in seconds
             int nbits = 8*int(sizeof(float));
@@ -979,8 +989,13 @@ int main(int argc,char* argv[])
                        
                        // write to filterbank (if required)
                        if( pOutFilterbankI && filterbank_buffer ){
-                          for(int ch=0;ch<avg_spectrum2fits_i.size();ch++){                           
-                             filterbank_buffer[ch] = avg_spectrum2fits_i[ch];
+                          int n_chan = avg_spectrum2fits_i.size();
+                          for(int ch=0;ch<n_chan;ch++){
+                             if( gSaveFilterbankFilesReversed ){
+                                filterbank_buffer[ch] = avg_spectrum2fits_i[n_chan-1-ch];
+                             }else{
+                                filterbank_buffer[ch] = avg_spectrum2fits_i[ch];
+                             }
                           }
                           pOutFilterbankI->WriteData( filterbank_buffer , avg_spectrum2fits_i.size() ); 
                           // printf("DEBUG : wrote %d channels to filterbank file\n",avg_spectrum2fits_i.size() );
