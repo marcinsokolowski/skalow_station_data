@@ -81,6 +81,12 @@ if [[ -n "${15}" && "${15}" != "-" ]]; then
    transposed=${15}
 fi
 
+outdir_postfix=""
+if [[ -n "${16}" && "${16}" != "-" ]]; then
+   outdir_postfix=${16}
+fi
+
+
 
 export PATH=$HOME/github/hdf5_correlator/scripts/:$PATH
 
@@ -104,6 +110,7 @@ echo "period        = $period"
 echo "file format   = $ext (skip $skip_bytes [bytes])"
 echo "options       = $options"
 echo "outdir        = $outdir"
+echo "outdir_postfix = $outdir_postfix"
 echo "transposed    = $transposed"
 echo "############################################"
 date
@@ -169,7 +176,7 @@ do
                      ux=`echo $dada_file | awk -F '_' '{ch=$2;ux=substr($4,1,17);print ux;}'`
                      utc=`date -u -d "1970-01-01 UTC $ux seconds" +"%Y%m%dT%H%M%S"`
                      outfile=${utc}_ch${channel_total}
-                     outdir=ch${channel_total}
+                     outdir=ch${channel_total}${outdir_postfix}
                      
                      echo ".dada file = $dada_file"
                      echo "ch = $channel + $channel_to_process = $channel_total -> freq = $freq_mhz [MHz]"
@@ -184,8 +191,13 @@ do
                      else
                          # skalow_spectrometer test.dada -f test -p 0 -C 1 -c 0 -s 4096 -Z  -m -1 -F 410 -N 128 -O dynspec -a 7 -P 0.0894189988 -D 2
                          mkdir -p ${outdir}
-                         echo "skalow_spectrometer $dada_file -f test -p 0 -C ${n_cc_channels} -c ${channel_to_process} -s ${skip_bytes} -Z  -m -1 -F ${channel} -N ${n_channels} -O dynspec -a 7 -P ${period} -D 2 -A ${outdir} ${options}"
-                         skalow_spectrometer $dada_file -f test -p 0 -C ${n_cc_channels} -c ${channel_to_process} -s ${skip_bytes} -Z  -m -1 -F ${channel} -N ${n_channels} -O dynspec -a 7 -P ${period} -D 2 -A ${outdir} ${options}
+                         if [[ $n_cc_channels -gt 1 ]]; then
+                            echo "skalow_spectrometer $dada_file -f test -p 0 -C ${n_cc_channels} -c ${channel_to_process} -s ${skip_bytes} -Z  -m -1 -F ${channel} -N ${n_channels} -O dynspec -a 7 -P ${period} -D 2 -A ${outdir} ${options}"
+                            skalow_spectrometer $dada_file -f test -p 0 -C ${n_cc_channels} -c ${channel_to_process} -s ${skip_bytes} -Z  -m -1 -F ${channel} -N ${n_channels} -O dynspec -a 7 -P ${period} -D 2 -A ${outdir} ${options}
+                         else
+                            echo "skalow_spectrometer $dada_file -f test -p 0 -C 1 -c 0 -s ${skip_bytes} -Z  -m -1 -F ${channel_total} -N ${n_channels} -O dynspec -a 7 -P ${period} -D 2 -A ${outdir} ${options}"
+                            skalow_spectrometer $dada_file -f test -p 0 -C 1 -c 0 -s ${skip_bytes} -Z  -m -1 -F ${channel_total} -N ${n_channels} -O dynspec -a 7 -P ${period} -D 2 -A ${outdir} ${options}
+                         fi
                          
                          # calculate mean vs. freq. :
                          cd ${outdir}
