@@ -93,6 +93,7 @@ double gCorrWithInvJones=-1; // normalisation factor
 double gMaxTimeToProcessInSec=-1; 
 
 // output FITS files :
+bool gSaveAllFITS=false;
 string gOutFITSBase; // empty -> do not save FITS
 int gAvgNSpectraToFITS=29; // 1ms / (1.08*32/1000.00) = 28.935185185 , 0.1ms = 2.8935185185 ~= 3 spectra 
 double gIntegrationTimeSec=-1000; // 1ms <1000 -> no specified
@@ -214,6 +215,7 @@ void usage()
 //   printf("\t-u - assumes that UNIXTIME timestamp is added to line as extra record of DATA_TYPE structure\n");
    printf("\t-d - increases debug level\n");
    printf("\t-v - increases debug level\n");   
+   printf("\t-E - save all output FITS files\n");
    printf("\t-c CHANNEL : specifies channel to be dumped [default 0]\n");      
    printf("\t-C N_CHANNELS : number of channels [default %d]\n",gNChannels);
    printf("\t-f OUTFILENAME : name of file to which data is dumped\n");
@@ -245,7 +247,7 @@ void usage()
 }
 
 void parse_cmdline(int argc, char * argv[]) {
-   char optstring[] = "vudc:C:f:i:r:m:p:s:n:a:M:ZS:X:I:O:F:N:P:T:B:D:o:t:A:Yb:R";
+   char optstring[] = "vudc:C:f:i:r:m:p:s:n:a:M:ZS:X:I:O:F:N:P:T:B:D:o:t:A:Yb:RE";
    int opt,opt_param,i;
    
 //   strcpy(filename,"");
@@ -257,6 +259,10 @@ void parse_cmdline(int argc, char * argv[]) {
             if( optarg ){
                gOutDir = optarg;
             }
+            break;
+
+         case 'E':
+            gSaveAllFITS = true;
             break;
          
          case 'b':
@@ -851,6 +857,13 @@ int main(int argc,char* argv[])
                  // only required if FITS has to be saved :
                  CSpectrometer::fft_shift( out_spectrum_x, out_count_x, out_spectrum_x_shifted );
                  CSpectrometer::fft_shift( out_spectrum_y, out_count_y, out_spectrum_y_shifted );
+                 /* no fft shift test :
+                 out_spectrum_x_shifted.assign( out_count_x, 0 );
+                 out_spectrum_y_shifted.assign( out_count_y, 0 );
+                 for(int i=0;i<out_count_x;i++){
+                    out_spectrum_x_shifted[i] = out_spectrum_x[i];
+                    out_spectrum_y_shifted[i] = out_spectrum_y[i];
+                 }*/
                  
                  
                  if( gShiftReIm ){
@@ -1080,6 +1093,11 @@ int main(int argc,char* argv[])
       vector<double> mean_x_shifted, mean_y_shifted;
       CSpectrometer::fft_shift( mean_power_x, mean_x_shifted );
       CSpectrometer::fft_shift( mean_power_y, mean_y_shifted );
+      /* no FFT shift test:
+      for(int i=0;i<mean_power_x.size();i++){
+         mean_x_shifted.push_back( mean_power_x[i] );
+         mean_y_shifted.push_back( mean_power_y[i] );
+      }*/
       
       // write to output text file :
       for(int fch=0;fch<mean_x_shifted.size();fch++){
@@ -1106,8 +1124,10 @@ int main(int argc,char* argv[])
          }else{
             pOutFitsX->PrepareBigHornsHeader( uxtime, inttime, freq_header, fine_channel_bw );
          }
-         if( pOutFitsX->WriteFits( szOutFits ) ){
-            printf("ERROR : when writting output FITS %s\n",szOutFits);
+         if( gSaveAllFITS ){
+            if( pOutFitsX->WriteFits( szOutFits ) ){
+               printf("ERROR : when writting output FITS %s\n",szOutFits);
+            }
          }
          
          // Y pol :
@@ -1118,8 +1138,10 @@ int main(int argc,char* argv[])
          }else{
             pOutFitsY->PrepareBigHornsHeader( uxtime, inttime, freq_header, fine_channel_bw );
          }
-         if( pOutFitsY->WriteFits( szOutFits ) ){
-            printf("ERROR : when writting output FITS %s\n",szOutFits);
+         if( gSaveAllFITS ){
+            if( pOutFitsY->WriteFits( szOutFits ) ){
+               printf("ERROR : when writting output FITS %s\n",szOutFits);
+            }
          }
          
          // Stokes U :
@@ -1130,8 +1152,10 @@ int main(int argc,char* argv[])
          }else{
             pOutFitsU->PrepareBigHornsHeader( uxtime, inttime, freq_header, fine_channel_bw );
          }
-         if( pOutFitsU->WriteFits( szOutFits ) ){
-            printf("ERROR : when writting output FITS %s\n",szOutFits);
+         if( gSaveAllFITS ){
+            if( pOutFitsU->WriteFits( szOutFits ) ){
+               printf("ERROR : when writting output FITS %s\n",szOutFits);
+            }
          }
 
          // Stokes V :
@@ -1142,8 +1166,10 @@ int main(int argc,char* argv[])
          }else{
             pOutFitsV->PrepareBigHornsHeader( uxtime, inttime, freq_header, fine_channel_bw );
          }
-         if( pOutFitsV->WriteFits( szOutFits ) ){
-            printf("ERROR : when writting output FITS %s\n",szOutFits);
+         if( gSaveAllFITS ){
+            if( pOutFitsV->WriteFits( szOutFits ) ){
+               printf("ERROR : when writting output FITS %s\n",szOutFits);
+            }
          }
          
          // XY phase :
@@ -1154,8 +1180,10 @@ int main(int argc,char* argv[])
          }else{
             pOutFitsXYPhase->PrepareBigHornsHeader( uxtime, inttime, freq_header, fine_channel_bw );
          }
-         if( pOutFitsXYPhase->WriteFits( szOutFits ) ){
-            printf("ERROR : when writting output FITS %s\n",szOutFits);
+         if( gSaveAllFITS ){
+            if( pOutFitsXYPhase->WriteFits( szOutFits ) ){
+               printf("ERROR : when writting output FITS %s\n",szOutFits);
+            }
          }
 
          // normalise if required :         
@@ -1165,22 +1193,24 @@ int main(int argc,char* argv[])
          normalise_folded( *pFoldedV );
          
          // save output FITS files:
-         string szFoldedFits;
-         szFoldedFits = gOutFoldedFits + "_I.fits";
-         if( pFoldedI->WriteFits( szFoldedFits.c_str() ) ){
-            printf("ERROR : when writting output FITS folded fits %s\n",szFoldedFits.c_str());
-         }
-         szFoldedFits = gOutFoldedFits + "_Q.fits";
-         if( pFoldedQ->WriteFits( szFoldedFits.c_str() ) ){
-            printf("ERROR : when writting output FITS folded %s\n",szFoldedFits.c_str());
-         }
-         szFoldedFits = gOutFoldedFits + "_U.fits";
-         if( pFoldedU->WriteFits( szFoldedFits.c_str() ) ){
-            printf("ERROR : when writting output FITS folded %s\n",szFoldedFits.c_str());
-         }
-         szFoldedFits = gOutFoldedFits + "_V.fits";
-         if( pFoldedV->WriteFits( szFoldedFits.c_str() ) ){
-            printf("ERROR : when writting output FITS folded %s\n",szFoldedFits.c_str());
+         if( gSaveAllFITS ){
+            string szFoldedFits;
+            szFoldedFits = gOutFoldedFits + "_I.fits";
+            if( pFoldedI->WriteFits( szFoldedFits.c_str() ) ){
+               printf("ERROR : when writting output FITS folded fits %s\n",szFoldedFits.c_str());
+            }
+            szFoldedFits = gOutFoldedFits + "_Q.fits";
+            if( pFoldedQ->WriteFits( szFoldedFits.c_str() ) ){
+               printf("ERROR : when writting output FITS folded %s\n",szFoldedFits.c_str());
+            }
+            szFoldedFits = gOutFoldedFits + "_U.fits";
+            if( pFoldedU->WriteFits( szFoldedFits.c_str() ) ){
+               printf("ERROR : when writting output FITS folded %s\n",szFoldedFits.c_str());
+            }
+            szFoldedFits = gOutFoldedFits + "_V.fits";
+            if( pFoldedV->WriteFits( szFoldedFits.c_str() ) ){
+               printf("ERROR : when writting output FITS folded %s\n",szFoldedFits.c_str());
+            }
          }
          
          // Stokes I : use the same memory buffer as for Stokes V :
@@ -1193,8 +1223,10 @@ int main(int argc,char* argv[])
          }else{
             pOutFitsV->PrepareBigHornsHeader( uxtime, inttime, freq_header, fine_channel_bw );
          }
-         if( pOutFitsV->WriteFits( szOutFits ) ){
-            printf("ERROR : when writting output FITS %s\n",szOutFits);
+         if( gSaveAllFITS ){
+            if( pOutFitsV->WriteFits( szOutFits ) ){
+               printf("ERROR : when writting output FITS %s\n",szOutFits);
+            }
          }
          
          // Stokes Q : use the same memory buffer as for Stokes V :
@@ -1207,8 +1239,10 @@ int main(int argc,char* argv[])
          }else{
             pOutFitsV->PrepareBigHornsHeader( uxtime, inttime, freq_header, fine_channel_bw );
          }
-         if( pOutFitsV->WriteFits( szOutFits ) ){
-            printf("ERROR : when writting output FITS %s\n",szOutFits);
+         if( gSaveAllFITS ){
+            if( pOutFitsV->WriteFits( szOutFits ) ){
+               printf("ERROR : when writting output FITS %s\n",szOutFits);
+            }
          }
          
          // save maximum vs. frequency :
