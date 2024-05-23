@@ -98,6 +98,7 @@ string gOutFITSBase; // empty -> do not save FITS
 int gAvgNSpectraToFITS=29; // 1ms / (1.08*32/1000.00) = 28.935185185 , 0.1ms = 2.8935185185 ~= 3 spectra 
 double gIntegrationTimeSec=-1000; // 1ms <1000 -> no specified
 bool gTransposedFITS=false; 
+bool gSaveTotalPower=false;
 
 // folding :
 int gNFoldingBinsCount=128;
@@ -215,7 +216,7 @@ void usage()
 //   printf("\t-u - assumes that UNIXTIME timestamp is added to line as extra record of DATA_TYPE structure\n");
    printf("\t-d - increases debug level\n");
    printf("\t-v - increases debug level\n");   
-   printf("\t-E - save all output FITS files\n");
+   printf("\t-E - save all output FITS files and total power\n");
    printf("\t-c CHANNEL : specifies channel to be dumped [default 0]\n");      
    printf("\t-C N_CHANNELS : number of channels [default %d]\n",gNChannels);
    printf("\t-f OUTFILENAME : name of file to which data is dumped\n");
@@ -263,6 +264,7 @@ void parse_cmdline(int argc, char * argv[]) {
 
          case 'E':
             gSaveAllFITS = true;
+            gSaveTotalPower = true;
             break;
          
          case 'b':
@@ -603,12 +605,15 @@ int main(int argc,char* argv[])
   printf("INFO : parsed input filename %s to get unixtime = %.8f\n",filename,uxtime_start);
   
   FILE* out_dat_f = fopen( gOutFileDat , "w" );
-  FILE* out_totpower_f = fopen( gOutFileTotPower ,"w" );
-  if( !out_totpower_f ){
-     printf("ERROR : could not create file %s\n",gOutFileTotPower);
-     exit(-1);
-  }else{
-     printf("INFO : file %s created ok\n",gOutFileTotPower);
+  FILE* out_totpower_f = NULL;
+  if( gSaveTotalPower ){
+     out_totpower_f = fopen( gOutFileTotPower ,"w" );
+     if( !out_totpower_f ){
+        printf("ERROR : could not create file %s\n",gOutFileTotPower);
+        exit(-1);
+     }else{
+        printf("INFO : file %s created ok\n",gOutFileTotPower);
+     }
   }
 
   
@@ -1032,7 +1037,9 @@ int main(int argc,char* argv[])
                     }
                  
                     double total_power_i = total_power_x+total_power_y;
-                    fprintf(out_totpower_f,"%.8f %.8f %.8f %.8f\n",center_time,total_power_x/double(n_avg_spectrum2fits),total_power_y/double(n_avg_spectrum2fits),total_power_i/double(n_avg_spectrum2fits));
+                    if( out_totpower_f ){
+                       fprintf(out_totpower_f,"%.8f %.8f %.8f %.8f\n",center_time,total_power_x/double(n_avg_spectrum2fits),total_power_y/double(n_avg_spectrum2fits),total_power_i/double(n_avg_spectrum2fits));
+                    }
                     total_power_x=0.00;
                     total_power_y=0.00;
                     total_power_count=0;
