@@ -125,6 +125,8 @@ std::complex<double> gInvJones10( -0.06648148 , -0.01180349 );
 std::complex<double> gInvJones11(  0.01690944 , 0.0054325 );
 bool gAddXYPhase=false;
 
+int gNSpectraInGulp=1024;
+
 double fine_channel_freq( int cc, int fine_ch, int n_fine_ch_total )
 {
    double center_freq = cc*gChannel2FreqMultiplier;
@@ -243,12 +245,13 @@ void usage()
    printf("\t-Y : add XY phase\n");
    printf("\t-b FOFFSET_SIGN : save filterbank files, set sign of the offset [default %d]\n",gSaveFilterbankFilesSign);
    printf("\t-R : reversed channel order [default %d]\n",gSaveFilterbankFilesReversed);
+   printf("\t-G N_SPECTRA_IN_GULP : number of spectra in a gulp [default %d]\n",gNSpectraInGulp);
    
    exit(0);
 }
 
 void parse_cmdline(int argc, char * argv[]) {
-   char optstring[] = "vudc:C:f:i:r:m:p:s:n:a:M:ZS:X:I:O:F:N:P:T:B:D:o:t:A:Yb:RE";
+   char optstring[] = "vudc:C:f:i:r:m:p:s:n:a:M:ZS:X:I:O:F:N:P:T:B:D:o:t:A:Yb:REG:";
    int opt,opt_param,i;
    
 //   strcpy(filename,"");
@@ -265,6 +268,10 @@ void parse_cmdline(int argc, char * argv[]) {
          case 'E':
             gSaveAllFITS = true;
             gSaveTotalPower = true;
+            break;
+
+         case 'G':
+            gNSpectraInGulp = atol( optarg );
             break;
          
          case 'b':
@@ -572,7 +579,7 @@ int main(int argc,char* argv[])
   parse_cmdline(argc-1,argv+1);
   printf_parameters();
 
-  n_samples=gNBytesPerSample*gNChannels*1024;  
+  n_samples=gNBytesPerSample*gNChannels*gNSpectraInGulp;  
   FILE *f=NULL;  
   FILE* outf=NULL;
   char* buffer = new char[n_samples];
