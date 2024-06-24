@@ -795,6 +795,8 @@ int main(int argc,char* argv[])
       double total_power_x=0.00, total_power_y=0.00;
       long int total_power_count=0;
       
+      CSpectrometer spectrometer;
+      
       // gNBytesPerSample = BYTES_PER_SAMPLE = 4        
       bool bContinue = true;
       while( (n = fread(buffer, 1, n_samples, f)) > 0 && bContinue ){ // reads a line of all fine channels 
@@ -860,15 +862,15 @@ int main(int argc,char* argv[])
               // do FFT , accumlate 
               // int CSpectrometer::doFFT( std::complex<float>* in, int in_count, double* spectrum, std::complex<float>* spectrum_reim, int& out_count, double norm )
               // norm = 1.0/sqrt(context->n_chan)
-              CSpectrometer::doFFT( in_x, n_fine_fft_samples, out_spectrum_x, out_spectrum_reim_x, out_count_x, norm );
-              CSpectrometer::doFFT( in_y, n_fine_fft_samples, out_spectrum_y, out_spectrum_reim_y, out_count_y, norm );
+              spectrometer.doFFT( in_x, n_fine_fft_samples, out_spectrum_x, out_spectrum_reim_x, out_count_x, norm );
+              spectrometer.doFFT( in_y, n_fine_fft_samples, out_spectrum_y, out_spectrum_reim_y, out_count_y, norm );
               
               // do fft shift !!! to have DC in bin 0 !
               // TODO :
               if( pOutFitsX && pOutFitsY ){
                  // only required if FITS has to be saved :
-                 CSpectrometer::fft_shift( out_spectrum_x, out_count_x, out_spectrum_x_shifted );
-                 CSpectrometer::fft_shift( out_spectrum_y, out_count_y, out_spectrum_y_shifted );
+                 spectrometer.fft_shift( out_spectrum_x, out_count_x, out_spectrum_x_shifted );
+                 spectrometer.fft_shift( out_spectrum_y, out_count_y, out_spectrum_y_shifted );
                  /* no fft shift test :
                  out_spectrum_x_shifted.assign( out_count_x, 0 );
                  out_spectrum_y_shifted.assign( out_count_y, 0 );
@@ -879,8 +881,8 @@ int main(int argc,char* argv[])
                  
                  
                  if( gShiftReIm ){
-                    CSpectrometer::fft_shift( out_spectrum_reim_x, out_count_x, out_spectrum_reim_x_shifted );
-                    CSpectrometer::fft_shift( out_spectrum_reim_y, out_count_y, out_spectrum_reim_y_shifted );
+                    spectrometer.fft_shift( out_spectrum_reim_x, out_count_x, out_spectrum_reim_x_shifted );
+                    spectrometer.fft_shift( out_spectrum_reim_y, out_count_y, out_spectrum_reim_y_shifted );
                     
                     if( gAddXYPhase ){
                        for(int jjj=0;jjj<out_spectrum_reim_x_shifted.size();jjj++){
@@ -1105,8 +1107,8 @@ int main(int argc,char* argv[])
       }
       
       vector<double> mean_x_shifted, mean_y_shifted;
-      CSpectrometer::fft_shift( mean_power_x, mean_x_shifted );
-      CSpectrometer::fft_shift( mean_power_y, mean_y_shifted );
+      spectrometer.fft_shift( mean_power_x, mean_x_shifted );
+      spectrometer.fft_shift( mean_power_y, mean_y_shifted );
       /* no FFT shift test:
       for(int i=0;i<mean_power_x.size();i++){
          mean_x_shifted.push_back( mean_power_x[i] );
