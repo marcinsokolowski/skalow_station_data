@@ -12,7 +12,7 @@ all :
 	g++ skalow_spectrometer.cpp -D_UNIX $(OPT) -o skalow_spectrometer -L$(BIGHORNS)/lib $(COMMON_LIBS) -lm -lfftw3 -lmsfitslib
 #	g++ skalow_stitch_data.cpp -D_UNIX $(OPT) -o skalow_stitch_data -L$(BIGHORNS)/lib -lfitslib $(COMMON_LIBS) -lm
 #	g++ skalow_stitch_data_transposed.cpp -D_UNIX $(OPT) -o skalow_stitch_data_transposed -L$(BIGHORNS)/lib -lfitslib $(COMMON_LIBS) -lm
-	g++ swap_pols_in_dada.c $(OPT) -o swap_pols_in_dada
+	g++ swap_pols_in_dada.cpp $(OPT) -o swap_pols_in_dada
 	
 	cp read_binary_station_beam_test_order1_2pol $(NDIR)/bin/
 	cp read_binary_station_beam_test_order1_2pol_totpower $(NDIR)/bin/
