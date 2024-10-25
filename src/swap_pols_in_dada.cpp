@@ -255,14 +255,15 @@ int main(int argc,char* argv[])
       double accum = 0;
       int accum_count = 0;
       long int avg_index = 0;
+      int ret=0;
       
       char dada_header[DADA_HEADER_SIZE];
-      if( fread(buffer, 1, DADA_HEADER_SIZE, f) != DADA_HEADER_SIZE ){
-         printf("ERROR : could not read .dada header\n");
+      if( (ret=fread(dada_header, 1, DADA_HEADER_SIZE, f)) != DADA_HEADER_SIZE ){
+         printf("ERROR : could not read .dada header, only %d bytes read vs. should be %d\n",ret,DADA_HEADER_SIZE);
          exit(-1);
       }
-      if( fwrite( buffer, DADA_HEADER_SIZE, 1, outf ) != DADA_HEADER_SIZE ){
-         printf("ERROR : could not write .dada header\n");
+      if( (ret=fwrite( dada_header, 1, DADA_HEADER_SIZE, outf )) != DADA_HEADER_SIZE ){
+         printf("ERROR : could not write .dada header, only %d bytes written vs. should be %d\n",ret,DADA_HEADER_SIZE);
          exit(-1);
       }
 
@@ -293,7 +294,7 @@ int main(int argc,char* argv[])
            timesample++;
         }
         
-        if( fwrite( out_buffer, n_samples, 1, outf ) != n_samples ){
+        if( fwrite( out_buffer, 1, n_samples, outf ) != n_samples ){
            printf("ERROR : when writting output .dada file\n");
            exit(-1);
         }
