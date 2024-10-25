@@ -12,15 +12,17 @@ all :
 	g++ skalow_spectrometer.cpp -D_UNIX $(OPT) -o skalow_spectrometer -L$(BIGHORNS)/lib $(COMMON_LIBS) -lm -lfftw3 -lmsfitslib
 #	g++ skalow_stitch_data.cpp -D_UNIX $(OPT) -o skalow_stitch_data -L$(BIGHORNS)/lib -lfitslib $(COMMON_LIBS) -lm
 #	g++ skalow_stitch_data_transposed.cpp -D_UNIX $(OPT) -o skalow_stitch_data_transposed -L$(BIGHORNS)/lib -lfitslib $(COMMON_LIBS) -lm
+	g++ swap_pols_in_dada.c $(OPT) -o swap_pols_in_dada
 	
 	cp read_binary_station_beam_test_order1_2pol $(NDIR)/bin/
 	cp read_binary_station_beam_test_order1_2pol_totpower $(NDIR)/bin/
 	cp test_pattern_generated_data $(NDIR)/bin/
 	cp skalow_spectrometer $(NDIR)/bin/
+	cp swap_pols_in_dada $(NDIR)/bin/
 #	cp skalow_stitch_data $(NDIR)/bin/
 #	cp skalow_stitch_data_transposed $(NDIR)/bin/
 	
 
 clean :
-	rm -f read_binary_station_beam_test_order1_2pol test_pattern_generated_data read_binary_station_beam_test_order1_2pol_totpower *.o skalow_spectrometer skalow_stitch_data skalow_stitch_data_transposed
+	rm -f read_binary_station_beam_test_order1_2pol test_pattern_generated_data read_binary_station_beam_test_order1_2pol_totpower *.o skalow_spectrometer skalow_stitch_data skalow_stitch_data_transposed swap_pols_in_dada
 	
